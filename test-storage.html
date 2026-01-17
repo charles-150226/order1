@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试本地存储 - 黄Net点单系统</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #FFC107;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background: #FF9800;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-left: 4px solid #2196F3;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4CAF50;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffebee;
+            padding: 10px;
+            border-left: 4px solid #f44336;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>测试本地存储 - 黄Net点单系统</h1>
+        
+        <div class="info">
+            <h3>关于本页面</h3>
+            <p>这个页面用于测试和调试本地存储(localStorage)功能，帮助排查订单无法显示在后台的问题。</p>
+        </div>
+        
+        <div>
+            <h3>操作按钮</h3>
+            <button onclick="checkStorage()">检查本地存储</button>
+            <button onclick="clearStorage()">清空本地存储</button>
+            <button onclick="createTestOrder()">创建测试订单</button>
+            <button onclick="location.href='admin.html'">前往后台页面</button>
+            <button onclick="location.href='index.html'">返回前台页面</button>
+        </div>
+        
+        <div id="storage-info" class="mt-4">
+            <h3>本地存储状态</h3>
+            <p>请点击上方按钮查看本地存储内容。</p>
+        </div>
+        
+        <div class="mt-4">
+            <h3>常见问题排查</h3>
+            <div class="info">
+                <h4>问题1: 订单没有保存到本地存储</h4>
+                <p>可能原因: 浏览器禁用了本地存储，或者代码执行出错。</p>
+                <p>解决方案: 检查浏览器设置，确保允许本地存储；查看浏览器控制台是否有错误信息。</p>
+            </div>
+            
+            <div class="info">
+                <h4>问题2: 后台页面无法读取本地存储</h4>
+                <p>可能原因: 后台页面的读取代码有问题，或者本地存储的键名不匹配。</p>
+                <p>解决方案: 确保后台页面使用正确的键名('orders')读取数据。</p>
+            </div>
+            
+            <div class="info">
+                <h4>问题3: 跨浏览器/跨设备访问</h4>
+                <p>注意: 本地存储是基于浏览器的，不同浏览器或设备之间不共享数据。</p>
+                <p>解决方案: 在同一浏览器中测试前台和后台功能。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查本地存储
+        function checkStorage() {
+            const storageInfo = document.getElementById('storage-info');
+            
+            try {
+                // 检查localStorage是否可用
+                if (typeof Storage !== 'undefined') {
+                    // 获取所有localStorage键值对
+                    const allKeys = Object.keys(localStorage);
+                    let storageContent = '<div class="success"><p>本地存储可用！</p></div>';
+                    
+                    if (allKeys.length === 0) {
+                        storageContent += '<div class="info"><p>本地存储为空，没有找到任何数据。</p></div>';
+                    } else {
+                        storageContent += `<div class="info"><p>找到 ${allKeys.length} 个存储项：</p></div>`;
+                        
+                        // 显示所有存储项
+                        allKeys.forEach(key => {
+                            const value = localStorage.getItem(key);
+                            storageContent += `<div class="mt-2"><strong>键名:</strong> ${key}</div>`;
+                            
+                            try {
+                                // 尝试解析JSON
+                                const parsedValue = JSON.parse(value);
+                                if (Array.isArray(parsedValue)) {
+                                    storageContent += `<div><strong>类型:</strong> 数组 (${parsedValue.length} 个元素)</div>`;
+                                } else if (typeof parsedValue === 'object') {
+                                    storageContent += `<div><strong>类型:</strong> 对象</div>`;
+                                }
+                                
+                                // 格式化显示
+                                storageContent += `<pre>${JSON.stringify(parsedValue, null, 2)}</pre>`;
+                                
+                                // 如果是订单数据，显示详细信息
+                                if (key === 'orders') {
+                                    const orders = parsedValue;
+                                    storageContent += `<div class="success"><p>找到 ${orders.length} 个订单！</p></div>`;
+                                    
+                                    orders.forEach((order, index) => {
+                                        storageContent += `
+                                            <div class="mt-3">
+                                                <strong>订单 ${index + 1}:</strong> #${order.orderNumber}
+                                                <br>
+                                                <strong>时间:</strong> ${new Date(order.timestamp).toLocaleString()}
+                                                <br>
+                                                <strong>状态:</strong> ${order.status}
+                                                <br>
+                                                <strong>金额:</strong> ${order.total}
+                                                <br>
+                                                <strong>菜品数量:</strong> ${order.items.length} 种
+                                            </div>
+                                        `;
+                                    });
+                                }
+                            } catch (e) {
+                                // 不是JSON格式，直接显示
+                                storageContent += `<pre>${value}</pre>`;
+                            }
+                        });
+                    }
+                    
+                    storageInfo.innerHTML = storageContent;
+                } else {
+                    storageInfo.innerHTML = '<div class="error"><p>抱歉，您的浏览器不支持本地存储！</p></div>';
+                }
+            } catch (error) {
+                storageInfo.innerHTML = `<div class="error"><p>读取本地存储时出错: ${error.message}</p></div>`;
+            }
+        }
+        
+        // 清空本地存储
+        function clearStorage() {
+            if (confirm('确定要清空所有本地存储数据吗？这将删除所有订单信息！')) {
+                try {
+                    localStorage.clear();
+                    document.getElementById('storage-info').innerHTML = '<div class="success"><p>本地存储已清空！</p></div>';
+                } catch (error) {
+                    document.getElementById('storage-info').innerHTML = `<div class="error"><p>清空本地存储时出错: ${error.message}</p></div>`;
+                }
+            }
+        }
+        
+        // 创建测试订单
+        function createTestOrder() {
+            try {
+                // 生成测试订单
+                const testOrder = {
+                    orderNumber: generateOrderNumber(),
+                    items: [
+                        {
+                            id: 1,
+                            name: '红烧黄花鱼',
+                            price: 68.00,
+                            image: 'https://p26-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1370118911371378714~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=8D52q5Mfu5RUbkEiCydaWvhl8kM%3D',
+                            quantity: 1
+                        },
+                        {
+                            id: 9,
+                            name: '烧仙草奶茶',
+                            price: 32.00,
+                            image: 'https://p3-doubao-search-sign.byteimg.com/labis/b8d76ed87891e2441b8597e711c66774~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=BV7hRXU%2F%2FfsJxi2dvKgXW2F4cHg%3D',
+                            quantity: 2
+                        }
+                    ],
+                    notes: '测试订单，用于调试',
+                    subtotal: '¥132.00',
+                    serviceFee: '¥13.20',
+                    total: '¥145.20',
+                    timestamp: new Date().toISOString(),
+                    status: 'pending'
+                };
+                
+                // 获取现有订单
+                const storedOrders = localStorage.getItem('orders');
+                const orders = storedOrders ? JSON.parse(storedOrders) : [];
+                
+                // 添加测试订单
+                orders.push(testOrder);
+                
+                // 保存到本地存储
+                localStorage.setItem('orders', JSON.stringify(orders));
+                
+                document.getElementById('storage-info').innerHTML = `
+                    <div class="success">
+                        <p>测试订单创建成功！</p>
+                        <p>订单号: #${testOrder.orderNumber}</p>
+                        <p>总金额: ${testOrder.total}</p>
+                        <p>当前订单总数: ${orders.length}</p>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('storage-info').innerHTML = `<div class="error"><p>创建测试订单时出错: ${error.message}</p></div>`;
+            }
+        }
+        
+        // 生成订单号
+        function generateOrderNumber() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const random = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+            
+            return `${year}${month}${day}${random}`;
+        }
+        
+        // 页面加载时自动检查存储
+        window.onload = function() {
+            checkStorage();
+        };
+    </script>
+</body>
+</html>

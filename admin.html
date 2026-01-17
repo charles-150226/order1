@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黄Net点单系统 - 后台管理</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- GSAP 动画库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <!-- Firebase 配置 -->
+    <script src="firebase-config.js"></script>
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FFC107',
+                        secondary: '#FF9800',
+                        dark: '#333333',
+                        light: '#FFFFFF',
+                        gray: '#F5F5F5',
+                        'gray-dark': '#E0E0E0',
+                        'success': '#4CAF50',
+                        'warning': '#FF9800',
+                        'danger': '#F44336',
+                        'info': '#2196F3'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-short': 'bounce 0.5s ease-in-out',
+                        'fade-in': 'fadeIn 0.3s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .text-shadow {
+                text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header class="bg-primary shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/09f58eb502174ef1b36b1a0ad783ec71~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026011713550486A6C8362103A84E589C&rrcfp=f06b921b&x-expires=1771221329&x-signature=IsEtif38kbmWMQW2lU1Ezz4Hc5Q%3D" alt="黄Net点单系统" class="h-10 w-10">
+                <h1 class="text-2xl font-bold text-dark">黄Net点单系统 - 后台管理</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="index.html" class="flex items-center space-x-1 text-dark hover:text-secondary transition-colors">
+                    <i class="fa fa-arrow-left"></i>
+                    <span>返回前台</span>
+                </a>
+                <button id="refresh-orders" class="p-2 rounded-full hover:bg-secondary transition-colors">
+                    <i class="fa fa-refresh text-dark text-xl"></i>
+                </button>
+                <button id="logout-btn" class="p-2 rounded-full hover:bg-secondary transition-colors">
+                    <i class="fa fa-sign-out text-dark text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">今日订单</p>
+                        <h3 id="today-orders" class="text-3xl font-bold text-dark">0</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-primary bg-opacity-20 flex items-center justify-center">
+                        <i class="fa fa-shopping-cart text-primary text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center">
+                    <span id="today-orders-change" class="text-success text-sm font-medium flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 0%
+                    </span>
+                    <span class="text-gray-500 text-sm ml-2">较昨日</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">今日收入</p>
+                        <h3 id="today-revenue" class="text-3xl font-bold text-dark">¥0.00</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-success bg-opacity-20 flex items-center justify-center">
+                        <i class="fa fa-money text-success text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center">
+                    <span id="today-revenue-change" class="text-success text-sm font-medium flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 0%
+                    </span>
+                    <span class="text-gray-500 text-sm ml-2">较昨日</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">待处理订单</p>
+                        <h3 id="pending-orders" class="text-3xl font-bold text-dark">0</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-warning bg-opacity-20 flex items-center justify-center">
+                        <i class="fa fa-clock-o text-warning text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center">
+                    <span id="pending-orders-change" class="text-danger text-sm font-medium flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 0%
+                    </span>
+                    <span class="text-gray-500 text-sm ml-2">较昨日</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">已完成订单</p>
+                        <h3 id="completed-orders" class="text-3xl font-bold text-dark">0</h3>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-info bg-opacity-20 flex items-center justify-center">
+                        <i class="fa fa-check-circle text-info text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center">
+                    <span id="completed-orders-change" class="text-success text-sm font-medium flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 0%
+                    </span>
+                    <span class="text-gray-500 text-sm ml-2">较昨日</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 订单列表 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-dark flex items-center">
+                    <i class="fa fa-list-alt mr-2 text-primary"></i>
+                    订单列表
+                </h2>
+                <div class="flex space-x-2">
+                    <select id="order-status-filter" class="p-2 border-2 border-gray-dark rounded-lg focus:outline-none focus:border-primary">
+                        <option value="all">全部状态</option>
+                        <option value="pending">待处理</option>
+                        <option value="processing">处理中</option>
+                        <option value="completed">已完成</option>
+                        <option value="cancelled">已取消</option>
+                    </select>
+                    <select id="order-sort" class="p-2 border-2 border-gray-dark rounded-lg focus:outline-none focus:border-primary">
+                        <option value="newest">最新优先</option>
+                        <option value="oldest">最早优先</option>
+                        <option value="highest">金额从高到低</option>
+                        <option value="lowest">金额从低到高</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[800px]">
+                    <thead>
+                        <tr class="bg-gray-dark">
+                            <th class="py-3 px-4 text-left text-dark font-semibold">订单号</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">时间</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">菜品数量</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">备注</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">金额</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">状态</th>
+                            <th class="py-3 px-4 text-left text-dark font-semibold">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <!-- 订单列表将通过JS动态生成 -->
+                        <tr>
+                            <td colspan="7" class="py-10 text-center text-gray-500">暂无订单数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="flex justify-between items-center mt-6">
+                <div class="text-gray-500 text-sm">
+                    显示 <span id="showing-orders">0</span> 条，共 <span id="total-orders">0</span> 条
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prev-page" class="px-4 py-2 border-2 border-gray-dark rounded-lg text-dark hover:bg-gray-dark disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left mr-1"></i> 上一页
+                    </button>
+                    <button id="next-page" class="px-4 py-2 border-2 border-gray-dark rounded-lg text-dark hover:bg-gray-dark disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        下一页 <i class="fa fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 订单详情弹窗 -->
+    <div id="order-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="flex justify-between items-start mb-6">
+                <h3 class="text-2xl font-bold text-dark">订单详情</h3>
+                <button id="close-detail-modal" class="text-gray-500 hover:text-dark">
+                    <i class="fa fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h4 class="text-lg font-semibold text-dark mb-2">基本信息</h4>
+                    <div class="bg-gray p-4 rounded-lg">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">订单号</span>
+                            <span id="detail-order-number" class="font-semibold text-dark">#20230715001</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">下单时间</span>
+                            <span id="detail-order-time" class="font-semibold text-dark">2023-07-15 12:30:45</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">订单状态</span>
+                            <span id="detail-order-status" class="font-semibold text-warning">待处理</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">备注</span>
+                            <span id="detail-order-notes" class="font-semibold text-dark">无</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold text-dark mb-2">支付信息</h4>
+                    <div class="bg-gray p-4 rounded-lg">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">菜品小计</span>
+                            <span id="detail-subtotal" class="font-semibold text-dark">¥0.00</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">服务费</span>
+                            <span id="detail-service-fee" class="font-semibold text-dark">¥0.00</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-lg">
+                            <span class="text-dark">总计</span>
+                            <span id="detail-total" class="text-primary">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-dark mb-2">菜品列表</h4>
+                <div class="bg-gray rounded-lg overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-dark">
+                                <th class="py-3 px-4 text-left text-dark font-semibold">菜品</th>
+                                <th class="py-3 px-4 text-left text-dark font-semibold">单价</th>
+                                <th class="py-3 px-4 text-left text-dark font-semibold">数量</th>
+                                <th class="py-3 px-4 text-left text-dark font-semibold">小计</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-items-list">
+                            <!-- 菜品列表将通过JS动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-order" class="py-3 px-6 bg-danger text-white rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+                    <i class="fa fa-times mr-2"></i>
+                    取消订单
+                </button>
+                <button id="process-order" class="py-3 px-6 bg-warning text-white rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+                    <i class="fa fa-cog mr-2"></i>
+                    开始处理
+                </button>
+                <button id="complete-order" class="py-3 px-6 bg-success text-white rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+                    <i class="fa fa-check mr-2"></i>
+                    完成订单
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 animate-fade-in">
+            <div class="text-center mb-6">
+                <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/09f58eb502174ef1b36b1a0ad783ec71~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026011713550486A6C8362103A84E589C&rrcfp=f06b921b&x-expires=1771221329&x-signature=IsEtif38kbmWMQW2lU1Ezz4Hc5Q%3D" alt="黄Net点单系统" class="h-16 w-16 mx-auto mb-4">
+                <h3 class="text-2xl font-bold text-dark">后台管理登录</h3>
+                <p class="text-gray-500 mt-2">请输入管理员账号和密码</p>
+            </div>
+            
+            <div class="mb-6">
+                <div class="mb-4">
+                    <label for="username" class="block text-dark mb-2">用户名</label>
+                    <input type="text" id="username" class="w-full p-3 border-2 border-gray-dark rounded-lg focus:outline-none focus:border-primary" placeholder="请输入用户名">
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="block text-dark mb-2">密码</label>
+                    <input type="password" id="password" class="w-full p-3 border-2 border-gray-dark rounded-lg focus:outline-none focus:border-primary" placeholder="请输入密码">
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="remember" class="h-4 w-4 text-primary focus:ring-primary border-gray-dark rounded">
+                        <label for="remember" class="ml-2 block text-gray-600">记住我</label>
+                    </div>
+                    <a href="#" class="text-primary hover:text-secondary transition-colors">忘记密码？</a>
+                </div>
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="login-btn" class="py-3 px-8 bg-primary text-dark rounded-lg font-semibold hover:bg-secondary transition-colors w-full">
+                    登录
+                </button>
+            </div>
+            
+            <div id="login-error" class="mt-4 p-3 bg-danger bg-opacity-10 text-danger rounded-lg hidden">
+                <i class="fa fa-exclamation-circle mr-2"></i>
+                <span>用户名或密码错误，请重试</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 订单数据
+        let orders = [];
+        let currentOrder = null;
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let filteredOrders = [];
+        
+        // 模拟菜品数据（与前台保持一致）
+        const dishes = [
+            // 中餐
+            {
+                id: 1,
+                name: '红烧黄花鱼',
+                price: 68.00,
+                description: '新鲜黄花鱼配以特制红烧酱汁，肉质鲜嫩，口感丰富',
+                category: 'chinese',
+                image: 'https://p26-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1370118911371378714~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=8D52q5Mfu5RUbkEiCydaWvhl8kM%3D',
+                ingredients: '黄花鱼、姜、蒜、葱、酱油、糖、料酒',
+                calories: 320,
+                protein: 25,
+                fat: 18,
+                rating: 4.8,
+                reviews: 156,
+                recommended: true,
+                popular: true
+            },
+            {
+                id: 2,
+                name: '油爆黑虎虾',
+                price: 88.00,
+                description: '精选黑虎虾，配以青红椒爆炒，口感爽脆，香辣可口',
+                category: 'chinese',
+                image: 'https://p26-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1488294335286214661~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=koLx9qxyGTBI%2BDCr9CoFNKDL4z8%3D',
+                ingredients: '黑虎虾、青椒、红椒、姜、蒜、葱、干辣椒',
+                calories: 280,
+                protein: 32,
+                fat: 15,
+                rating: 4.6,
+                reviews: 132,
+                recommended: true,
+                popular: true
+            },
+            {
+                id: 3,
+                name: '麻婆豆腐',
+                price: 32.00,
+                description: '传统川菜，豆腐嫩滑，配以麻辣鲜香的豆瓣酱，口感丰富',
+                category: 'chinese',
+                image: 'https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1471219134377361410~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=u%2B9LETvCJvcllt9U9kiqri0FWAs%3D',
+                ingredients: '豆腐、牛肉末、豆瓣酱、花椒、干辣椒、葱、蒜',
+                calories: 240,
+                protein: 12,
+                fat: 18,
+                rating: 4.5,
+                reviews: 98,
+                recommended: false,
+                popular: true
+            },
+            
+            // 西餐
+            {
+                id: 4,
+                name: '黑椒牛排',
+                price: 128.00,
+                description: '精选澳洲进口牛排，配以黑椒酱汁，外焦里嫩，口感极佳',
+                category: 'western',
+                image: 'https://p3-doubao-search-sign.byteimg.com/labis/ad2e2eaf3ec70e9ec25454d11c194d49~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=PyJMZiIXIT8vAMTb8fD5V0VnAVc%3D',
+                ingredients: '牛排、黑胡椒、盐、橄榄油、迷迭香、大蒜',
+                calories: 450,
+                protein: 38,
+                fat: 28,
+                rating: 4.9,
+                reviews: 203,
+                recommended: true,
+                popular: true
+            },
+            {
+                id: 5,
+                name: '金枪鱼蔬菜沙拉',
+                price: 48.00,
+                description: '新鲜蔬菜搭配金枪鱼，营养均衡，健康美味',
+                category: 'western',
+                image: 'https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1644908436432093184~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=AsE9W6R33vO%2F2EaoN1YLER%2FV%2FL0%3D',
+                ingredients: '金枪鱼、混合生菜、西红柿、黄瓜、鸡蛋、玉米粒、橄榄油',
+                calories: 220,
+                protein: 20,
+                fat: 12,
+                rating: 4.4,
+                reviews: 87,
+                recommended: false,
+                popular: false
+            },
+            
+            // 甜点
+            {
+                id: 6,
+                name: '星空蛋糕',
+                price: 58.00,
+                description: '创意甜点，蓝紫色渐变的奶油，点缀星星形状的巧克力，颜值与口感并存',
+                category: 'dessert',
+                image: 'https://p3-doubao-search-sign.byteimg.com/pgc-image/290801e458824fe0b1433cccca5b98c9~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=qFWVGiMRAkV7seB0QtKmmoDYSaQ%3D',
+                ingredients: '面粉、鸡蛋、奶油、糖、食用色素、巧克力',
+                calories: 380,
+                protein: 5,
+                fat: 22,
+                rating: 4.7,
+                reviews: 145,
+                recommended: true,
+                popular: true
+            },
+            {
+                id: 7,
+                name: '彩虹蛋糕',
+                price: 48.00,
+                description: '多层彩虹色蛋糕，口感松软，奶油香甜不腻',
+                category: 'dessert',
+                image: 'https://p3-doubao-search-sign.byteimg.com/pgc-image/079f3d2cd70e43afb131a5cfa8388e7a~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=LnS3G5cTwoWfQXosTzd1BLBbb24%3D',
+                ingredients: '面粉、鸡蛋、奶油、糖、食用色素',
+                calories: 350,
+                protein: 4,
+                fat: 20,
+                rating: 4.6,
+                reviews: 128,
+                recommended: false,
+                popular: true
+            },
+            
+            // 饮品
+            {
+                id: 8,
+                name: '猕猴桃气泡水',
+                price: 28.00,
+                description: '新鲜猕猴桃汁搭配气泡水，清爽解渴，富含维生素C',
+                category: 'drink',
+                image: 'https://p11-doubao-search-sign.byteimg.com/labis/3c8a9f47a68dcef07264e95612d48b3c~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=UnJ%2FnjmBncmbWh11XvLyumTK1KU%3D',
+                ingredients: '猕猴桃、气泡水、糖浆、冰块',
+                calories: 120,
+                protein: 1,
+                fat: 0,
+                rating: 4.3,
+                reviews: 76,
+                recommended: false,
+                popular: false
+            },
+            {
+                id: 9,
+                name: '烧仙草奶茶',
+                price: 32.00,
+                description: '香浓奶茶搭配Q弹烧仙草，口感丰富，是消暑的最佳选择',
+                category: 'drink',
+                image: 'https://p3-doubao-search-sign.byteimg.com/labis/b8d76ed87891e2441b8597e711c66774~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784181311&x-signature=BV7hRXU%2F%2FfsJxi2dvKgXW2F4cHg%3D',
+                ingredients: '奶茶、烧仙草、椰果、珍珠',
+                calories: 220,
+                protein: 3,
+                fat: 8,
+                rating: 4.8,
+                reviews: 167,
+                recommended: true,
+                popular: true
+            }
+        ];
+
+        // DOM 加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            checkLoginStatus();
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 初始化页面
+            initializePage();
+        });
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+            
+            if (!isLoggedIn) {
+                // 显示登录弹窗
+                document.getElementById('login-modal').classList.remove('hidden');
+            } else {
+                // 隐藏登录弹窗
+                document.getElementById('login-modal').classList.add('hidden');
+                
+                // 加载订单数据
+                loadOrders();
+            }
+        }
+
+        // 初始化页面
+        function initializePage() {
+            // 设置当前日期
+            const today = new Date();
+            document.querySelector('title').textContent = `黄Net点单系统 - 后台管理 (${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()})`;
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 登录按钮
+            document.getElementById('login-btn').addEventListener('click', login);
+            
+            // 刷新订单按钮
+            document.getElementById('refresh-orders').addEventListener('click', function() {
+                loadOrders();
+                showToast('订单列表已刷新');
+            });
+            
+            // 登出按钮
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            
+            // 关闭详情弹窗
+            document.getElementById('close-detail-modal').addEventListener('click', closeDetailModal);
+            
+            // 订单状态筛选
+            document.getElementById('order-status-filter').addEventListener('change', filterAndSortOrders);
+            
+            // 订单排序
+            document.getElementById('order-sort').addEventListener('change', filterAndSortOrders);
+            
+            // 分页按钮
+            document.getElementById('prev-page').addEventListener('click', goToPrevPage);
+            document.getElementById('next-page').addEventListener('click', goToNextPage);
+            
+            // 订单操作按钮
+            document.getElementById('cancel-order').addEventListener('click', cancelOrder);
+            document.getElementById('process-order').addEventListener('click', processOrder);
+            document.getElementById('complete-order').addEventListener('click', completeOrder);
+        }
+
+        // 登录
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const remember = document.getElementById('remember').checked;
+            
+            // 简单验证（实际应用中应该使用更安全的验证方式）
+            if (username === 'admin' && password === 'admin123') {
+                // 登录成功
+                localStorage.setItem('adminLoggedIn', 'true');
+                isLoggedIn = true;
+                
+                if (remember) {
+                    localStorage.setItem('adminUsername', username);
+                } else {
+                    localStorage.removeItem('adminUsername');
+                }
+                
+                // 隐藏登录弹窗
+                document.getElementById('login-modal').classList.add('hidden');
+                
+                // 显示加载状态
+                document.getElementById('orders-table-body').innerHTML = '<tr><td colspan="8" class="text-center py-8"><i class="fa fa-spinner fa-spin text-2xl text-primary mr-2"></i>正在加载订单数据...</td></tr>';
+                
+                // 加载订单数据
+                loadOrders();
+                
+                showToast('登录成功', 'success');
+            } else {
+                // 登录失败
+                document.getElementById('login-error').classList.remove('hidden');
+                
+                // 3秒后隐藏错误提示
+                setTimeout(() => {
+                    document.getElementById('login-error').classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        // 登出
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('adminLoggedIn');
+                localStorage.removeItem('adminUsername');
+                
+                // 显示登录弹窗
+                document.getElementById('login-modal').classList.remove('hidden');
+                
+                // 清空订单数据
+                orders = [];
+                filteredOrders = [];
+                currentPage = 1;
+                
+                // 更新UI
+                updateOrdersTable();
+                updateStatistics();
+            }
+        }
+
+        // 加载订单数据
+        function loadOrders() {
+            // 显示加载状态
+            document.getElementById('orders-table-body').innerHTML = '<tr><td colspan="8" class="text-center py-8"><i class="fa fa-spinner fa-spin text-2xl text-primary mr-2"></i>正在加载订单数据...</td></tr>';
+            
+            // 尝试从云端获取数据
+            if (isOnline && ordersRef) {
+                loadOrdersFromCloud();
+            } else {
+                // 从本地存储获取数据
+                loadOrdersFromLocal();
+            }
+        }
+
+        // 从云端加载订单
+        function loadOrdersFromCloud() {
+            console.log('正在从云端加载订单数据...');
+            
+            ordersRef.once('value')
+                .then((snapshot) => {
+                    const cloudOrders = [];
+                    const data = snapshot.val();
+                    
+                    if (data) {
+                        // 转换Firebase数据格式
+                        Object.keys(data).forEach((key) => {
+                            const order = data[key];
+                            order.firebaseKey = key; // 保存Firebase的key用于后续更新
+                            cloudOrders.push(order);
+                        });
+                        
+                        // 按时间排序（最新的在前）
+                        cloudOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        
+                        orders = cloudOrders;
+                        console.log('从云端加载到', orders.length, '个订单');
+                        
+                        // 保存到本地作为备份
+                        localStorage.setItem('orders', JSON.stringify(orders));
+                        showToast(`成功从云端加载 ${orders.length} 个订单`, 'success');
+                    } else {
+                        orders = [];
+                        console.log('云端没有订单数据');
+                    }
+                    
+                    // 过滤和排序订单
+                    filterAndSortOrders();
+                    
+                    // 更新统计数据
+                    updateStatistics();
+                })
+                .catch((error) => {
+                    console.error('从云端加载订单失败:', error);
+                    showToast('云端加载失败，正在使用本地数据', 'warning');
+                    
+                    // 降级到本地存储
+                    loadOrdersFromLocal();
+                });
+        }
+
+        // 从本地加载订单
+        function loadOrdersFromLocal() {
+            console.log('正在从本地加载订单数据...');
+            
+            const storedOrders = localStorage.getItem('orders');
+            
+            if (storedOrders) {
+                orders = JSON.parse(storedOrders);
+                console.log('从本地加载到', orders.length, '个订单');
+                
+                if (!isOnline) {
+                    showToast(`已加载 ${orders.length} 个本地订单`, 'info');
+                }
+            } else {
+                orders = [];
+                console.log('本地没有订单数据');
+            }
+            
+            // 过滤和排序订单
+            filterAndSortOrders();
+            
+            // 更新统计数据
+            updateStatistics();
+        }
+
+        // 过滤和排序订单
+        function filterAndSortOrders() {
+            const statusFilter = document.getElementById('order-status-filter').value;
+            const sortOption = document.getElementById('order-sort').value;
+            
+            // 重置当前页码
+            currentPage = 1;
+            
+            // 过滤订单
+            if (statusFilter === 'all') {
+                filteredOrders = [...orders];
+            } else {
+                filteredOrders = orders.filter(order => order.status === statusFilter);
+            }
+            
+            // 排序订单
+            switch (sortOption) {
+                case 'newest':
+                    filteredOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    break;
+                case 'oldest':
+                    filteredOrders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    break;
+                case 'highest':
+                    filteredOrders.sort((a, b) => parseFloat(b.total.replace('¥', '')) - parseFloat(a.total.replace('¥', '')));
+                    break;
+                case 'lowest':
+                    filteredOrders.sort((a, b) => parseFloat(a.total.replace('¥', '')) - parseFloat(b.total.replace('¥', '')));
+                    break;
+            }
+            
+            // 更新订单表格
+            updateOrdersTable();
+        }
+
+        // 更新订单表格
+        function updateOrdersTable() {
+            const tableBody = document.getElementById('orders-table-body');
+            
+            // 清空表格
+            tableBody.innerHTML = '';
+            
+            // 计算分页
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+            
+            // 更新显示信息
+            document.getElementById('showing-orders').textContent = paginatedOrders.length;
+            document.getElementById('total-orders').textContent = filteredOrders.length;
+            
+            // 更新分页按钮状态
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = endIndex >= filteredOrders.length;
+            
+            // 如果没有订单，显示提示信息
+            if (paginatedOrders.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="7" class="py-10 text-center text-gray-500">暂无订单数据</td>
+                `;
+                tableBody.appendChild(row);
+                return;
+            }
+            
+            // 添加订单行
+            paginatedOrders.forEach(order => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-dark hover:bg-gray transition-colors';
+                
+                // 计算菜品总数
+                const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+                
+                // 格式化时间
+                const date = new Date(order.timestamp);
+                const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+                
+                // 获取状态文本和样式
+                const statusInfo = getStatusInfo(order.status);
+                
+                row.innerHTML = `
+                    <td class="py-4 px-4">
+                        <span class="font-semibold text-dark">#${order.orderNumber}</span>
+                    </td>
+                    <td class="py-4 px-4 text-gray-600">${formattedDate}</td>
+                    <td class="py-4 px-4 text-gray-600">${totalItems} 份</td>
+                    <td class="py-4 px-4 text-gray-600">${order.notes || '无'}</td>
+                    <td class="py-4 px-4 font-semibold text-primary">${order.total}</td>
+                    <td class="py-4 px-4">
+                        <span class="px-2 py-1 rounded-full text-white text-xs font-medium ${statusInfo.class}">${statusInfo.text}</span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <button class="view-order-btn px-3 py-1 bg-info text-white rounded-lg hover:bg-opacity-90 transition-colors" data-id="${order.orderNumber}">
+                            查看详情
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // 绑定查看详情按钮事件
+            document.querySelectorAll('.view-order-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderNumber = this.getAttribute('data-id');
+                    showOrderDetail(orderNumber);
+                });
+            });
+        }
+
+        // 获取状态信息
+        function getStatusInfo(status) {
+            switch (status) {
+                case 'pending':
+                    return { text: '待处理', class: 'bg-warning' };
+                case 'processing':
+                    return { text: '处理中', class: 'bg-info' };
+                case 'completed':
+                    return { text: '已完成', class: 'bg-success' };
+                case 'cancelled':
+                    return { text: '已取消', class: 'bg-danger' };
+                default:
+                    return { text: '未知', class: 'bg-gray-dark' };
+            }
+        }
+
+        // 显示订单详情
+        function showOrderDetail(orderNumber) {
+            // 查找订单
+            const order = orders.find(o => o.orderNumber === orderNumber);
+            
+            if (!order) return;
+            
+            // 设置当前订单
+            currentOrder = order;
+            
+            // 填充详情数据
+            document.getElementById('detail-order-number').textContent = `#${order.orderNumber}`;
+            
+            // 格式化时间
+            const date = new Date(order.timestamp);
+            const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+            document.getElementById('detail-order-time').textContent = formattedDate;
+            
+            // 获取状态信息
+            const statusInfo = getStatusInfo(order.status);
+            document.getElementById('detail-order-status').textContent = statusInfo.text;
+            document.getElementById('detail-order-status').className = `font-semibold ${statusInfo.class.replace('bg-', 'text-')}`;
+            
+            // 设置备注
+            document.getElementById('detail-order-notes').textContent = order.notes || '无';
+            
+            // 设置金额
+            document.getElementById('detail-subtotal').textContent = order.subtotal;
+            document.getElementById('detail-service-fee').textContent = order.serviceFee;
+            document.getElementById('detail-total').textContent = order.total;
+            
+            // 填充菜品列表
+            const itemsList = document.getElementById('detail-items-list');
+            itemsList.innerHTML = '';
+            
+            order.items.forEach(item => {
+                const dish = dishes.find(d => d.id === item.id);
+                const itemTotal = (dish.price * item.quantity).toFixed(2);
+                
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-dark hover:bg-gray-dark hover:bg-opacity-30 transition-colors';
+                row.innerHTML = `
+                    <td class="py-3 px-4">
+                        <div class="flex items-center">
+                            <img src="${dish.image}" alt="${dish.name}" class="w-10 h-10 object-cover rounded-lg mr-3">
+                            <span class="font-semibold text-dark">${dish.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600">¥${dish.price.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-gray-600">${item.quantity}</td>
+                    <td class="py-3 px-4 font-semibold text-dark">¥${itemTotal}</td>
+                `;
+                
+                itemsList.appendChild(row);
+            });
+            
+            // 更新操作按钮状态
+            updateActionButtons(order.status);
+            
+            // 显示弹窗
+            document.getElementById('order-detail-modal').classList.remove('hidden');
+        }
+
+        // 更新操作按钮状态
+        function updateActionButtons(status) {
+            const cancelBtn = document.getElementById('cancel-order');
+            const processBtn = document.getElementById('process-order');
+            const completeBtn = document.getElementById('complete-order');
+            
+            // 重置按钮状态
+            cancelBtn.disabled = false;
+            processBtn.disabled = false;
+            completeBtn.disabled = false;
+            cancelBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            processBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            completeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            // 根据状态设置按钮状态
+            switch (status) {
+                case 'pending':
+                    // 待处理状态下，所有按钮都可用
+                    break;
+                case 'processing':
+                    // 处理中状态下，不能再开始处理
+                    processBtn.disabled = true;
+                    processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    break;
+                case 'completed':
+                case 'cancelled':
+                    // 已完成或已取消状态下，所有按钮都不可用
+                    cancelBtn.disabled = true;
+                    processBtn.disabled = true;
+                    completeBtn.disabled = true;
+                    cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    completeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    break;
+            }
+        }
+
+        // 关闭详情弹窗
+        function closeDetailModal() {
+            document.getElementById('order-detail-modal').classList.add('hidden');
+            currentOrder = null;
+        }
+
+        // 取消订单
+        function cancelOrder() {
+            if (!currentOrder) return;
+            
+            if (confirm('确定要取消此订单吗？')) {
+                // 更新订单状态
+                const orderIndex = orders.findIndex(o => o.orderNumber === currentOrder.orderNumber);
+                
+                if (orderIndex !== -1) {
+                    orders[orderIndex].status = 'cancelled';
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('orders', JSON.stringify(orders));
+                    
+                    // 刷新订单列表
+                    filterAndSortOrders();
+                    
+                    // 更新统计数据
+                    updateStatistics();
+                    
+                    // 关闭详情弹窗
+                    closeDetailModal();
+                    
+                    showToast('订单已取消');
+                }
+            }
+        }
+
+        // 开始处理订单
+        function processOrder() {
+            if (!currentOrder) return;
+            
+            if (confirm('确定要开始处理此订单吗？')) {
+                // 更新订单状态
+                const orderIndex = orders.findIndex(o => o.orderNumber === currentOrder.orderNumber);
+                
+                if (orderIndex !== -1) {
+                    orders[orderIndex].status = 'processing';
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('orders', JSON.stringify(orders));
+                    
+                    // 刷新订单列表
+                    filterAndSortOrders();
+                    
+                    // 更新统计数据
+                    updateStatistics();
+                    
+                    // 关闭详情弹窗
+                    closeDetailModal();
+                    
+                    showToast('订单已开始处理');
+                }
+            }
+        }
+
+        // 完成订单
+        function completeOrder() {
+            if (!currentOrder) return;
+            
+            if (confirm('确定要完成此订单吗？')) {
+                // 更新订单状态
+                const orderIndex = orders.findIndex(o => o.orderNumber === currentOrder.orderNumber);
+                
+                if (orderIndex !== -1) {
+                    orders[orderIndex].status = 'completed';
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('orders', JSON.stringify(orders));
+                    
+                    // 刷新订单列表
+                    filterAndSortOrders();
+                    
+                    // 更新统计数据
+                    updateStatistics();
+                    
+                    // 关闭详情弹窗
+                    closeDetailModal();
+                    
+                    showToast('订单已完成');
+                }
+            }
+        }
+
+        // 上一页
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateOrdersTable();
+            }
+        }
+
+        // 下一页
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+            
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateOrdersTable();
+            }
+        }
+
+        // 更新统计数据
+        function updateStatistics() {
+            // 获取今天的日期
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // 获取昨天的日期
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            // 筛选今天的订单
+            const todayOrders = orders.filter(order => {
+                const orderDate = new Date(order.timestamp);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate.getTime() === today.getTime();
+            });
+            
+            // 筛选昨天的订单
+            const yesterdayOrders = orders.filter(order => {
+                const orderDate = new Date(order.timestamp);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate.getTime() === yesterday.getTime();
+            });
+            
+            // 计算今天的收入
+            const todayRevenue = todayOrders.reduce((sum, order) => {
+                if (order.status !== 'cancelled') {
+                    return sum + parseFloat(order.total.replace('¥', ''));
+                }
+                return sum;
+            }, 0);
+            
+            // 计算昨天的收入
+            const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => {
+                if (order.status !== 'cancelled') {
+                    return sum + parseFloat(order.total.replace('¥', ''));
+                }
+                return sum;
+            }, 0);
+            
+            // 计算待处理订单数量
+            const pendingOrders = orders.filter(order => order.status === 'pending').length;
+            
+            // 计算已完成订单数量
+            const completedOrders = orders.filter(order => order.status === 'completed').length;
+            
+            // 更新统计卡片
+            document.getElementById('today-orders').textContent = todayOrders.length;
+            document.getElementById('today-revenue').textContent = `¥${todayRevenue.toFixed(2)}`;
+            document.getElementById('pending-orders').textContent = pendingOrders;
+            document.getElementById('completed-orders').textContent = completedOrders;
+            
+            // 计算环比变化
+            const todayOrdersChange = calculateChange(todayOrders.length, yesterdayOrders.length);
+            const todayRevenueChange = calculateChange(todayRevenue, yesterdayRevenue);
+            const pendingOrdersChange = calculateChange(pendingOrders, yesterdayOrders.filter(order => order.status === 'pending').length);
+            const completedOrdersChange = calculateChange(completedOrders, yesterdayOrders.filter(order => order.status === 'completed').length);
+            
+            // 更新环比变化
+            updateChangeElement('today-orders-change', todayOrdersChange);
+            updateChangeElement('today-revenue-change', todayRevenueChange);
+            updateChangeElement('pending-orders-change', pendingOrdersChange);
+            updateChangeElement('completed-orders-change', completedOrdersChange);
+        }
+
+        // 计算环比变化
+        function calculateChange(current, previous) {
+            if (previous === 0) {
+                return current > 0 ? 100 : 0;
+            }
+            
+            return ((current - previous) / previous) * 100;
+        }
+
+        // 更新环比变化元素
+        function updateChangeElement(elementId, change) {
+            const element = document.getElementById(elementId);
+            
+            if (change > 0) {
+                element.className = 'text-success text-sm font-medium flex items-center';
+                element.innerHTML = `<i class="fa fa-arrow-up mr-1"></i> ${Math.abs(change).toFixed(1)}%`;
+            } else if (change < 0) {
+                element.className = 'text-danger text-sm font-medium flex items-center';
+                element.innerHTML = `<i class="fa fa-arrow-down mr-1"></i> ${Math.abs(change).toFixed(1)}%`;
+            } else {
+                element.className = 'text-gray-500 text-sm font-medium flex items-center';
+                element.innerHTML = `<i class="fa fa-minus mr-1"></i> 0.0%`;
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-primary text-dark px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+            toast.textContent = message;
+            
+            // 添加到页面
+            document.body.appendChild(toast);
+            
+            // 2秒后移除
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
